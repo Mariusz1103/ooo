@@ -1,0 +1,185 @@
+#include <iostream>
+#include <vector>
+#include <cstdio>
+#include <cmath>
+#include <queue>
+//kod napisany w C++, używając elementów C, gdyż C znam lepiej, ale w C++ nie ma wektorów, dzięki którym byłem staniem napiać kod praktycznie identyczny jak w Pythonie
+//struct Edge zastępuje klasę pythonową
+//trzymam w niej krawędzie od x do y o podanej wadzę i koszcie
+struct Edge
+{
+    int x, y, waga, koszt;
+};
+//vector zastępuję zastępuje mi ArrayListy
+
+int min_cost(const std::vector<Edge>& edges, int ilosc_jednostek_przeplywu, int s, int t);
+
+int main() {
+    int liczba_zestaw;
+    //wczytanie zestawów
+    std::scanf("%d",&liczba_zestaw);
+    //std::printf("liczba zestawów %d\n",liczba_zestaw);
+    while(liczba_zestaw>0){
+        int l=0;
+        int koszt_max;
+        std::scanf("%d",&koszt_max);
+        //std::printf("koszt_max: %d\n",koszt_max);
+        int liczba_graczy;
+
+        std::scanf("%d",&liczba_graczy);
+        //std::printf("liczba_graczy: %d\n",liczba_graczy);
+        int min_c=INT16_MAX;
+        int koszt_obecny=INT16_MAX;
+        //printf("Mecze %d\n", koszt_obecny);
+        int mecze = ((liczba_graczy * (liczba_graczy - 1)) / 2);
+        //printf("Mecze %d\n", mecze);
+        std::vector<Edge> edges;
+        //tworzenie grafu na ktorym będe operował
+        for (int i = 0; i < mecze; i++) {
+
+            int x, y, w, c;
+            std::scanf("%d %d %d %d",&x,&y,&w,&c);
+            //std::printf("%d %d %d %d\n", x, y, w, c);
+
+            if(w == x) {
+                edges.push_back({i, x + mecze, 1, 0});
+                edges.push_back({i, y + mecze, 1, c});
+            } else {
+                edges.push_back({i, x + mecze, 1, c});
+                edges.push_back({i, y + mecze, 1, 0});
+            }
+
+        }
+        int sufit=int(liczba_graczy/2);
+//        if(liczba_graczy%2==0)
+//        {
+//            sufit=liczba_graczy/2;
+//        }
+//        else
+//        {
+//            sufit=int(liczba_graczy/2)+1;
+//        }
+        //std::printf("%d\n",sufit);
+        for (int j = sufit; j < liczba_graczy; ++j) {
+            std::vector<Edge> edgestest = edges;
+
+            for (int z = 0; z < mecze; z++) {
+                edgestest.push_back({mecze + liczba_graczy + 1, z, 1, 0});
+            }
+            edgestest.push_back({mecze + liczba_graczy + 1, mecze + liczba_graczy, j, 0});
+            for (int z = mecze; z < mecze + liczba_graczy; z++) {
+                edgestest.push_back({z, mecze + liczba_graczy, j, 0});
+            }
+            edgestest.push_back({mecze, mecze + liczba_graczy + 2, j, 0});
+            edgestest.push_back({mecze + liczba_graczy, mecze + liczba_graczy + 2, mecze, 0});
+
+            min_c = min_cost(edgestest, j + mecze, mecze + liczba_graczy + 1, mecze + liczba_graczy + 2);
+            //printf("%d\n",min_c);
+
+            if (min_c < koszt_obecny) {
+                koszt_obecny=min_c;
+
+            }
+            if(koszt_obecny<=koszt_max)
+            {
+                printf("TAK\n");
+                l=1;
+                break;
+            }
+            edgestest.clear();
+        }
+        if(koszt_obecny > koszt_max and l==0) {
+            printf("NIE\n");
+
+        }
+        edges.clear();
+        liczba_zestaw-=1;
+
+    }
+    return 0;
+}
+//opis grafu, jak tworze, co zabiera itp.
+//tworzeny graf opiera się o dwie metody, o min cost oraz o przepływ z dolnym ograniczeniem
+//wierzchołki od 0 do (n*(n-1)/2, gdzie n to liczba graczy, to wierzołki odpowiadające zagranym meczą
+//każdy mecz to wierzołek połączony z wierzołkami, które reprezentują uczestników tego meczu
+//uczestnicy mają wierzołki numerowane od (n*(n-1)/2 do (n*(n-1)/2+n-1
+//waga tych połączeń do 1, a koszt zależy od tego kto wygrał, 0 lub cena za przekupienie
+//w algorytmie przypływu z dolnymi ograniczeniami zależy dodać 2 wierzołki wyjscie i ujscie
+//wierzołki mają numery s=(n*(n-1)/2+n+1, a t=(n*(n-1)/2+n+2
+//dodatkowo dodaje wierzołek t' który ma numer (n*(n-1)/2+n, który odpowiadałby ujsciu, gdyby
+//graf skladał sie tylko z meczy z zawodników, jest on połączony krawedzami takimi, że
+//zawodnicy wchodzą do tego wierzołka z wagą x, to liczba meczy która da królowi wygraną, czyli
+//liczba z zakresy syfit n/2 do n
+//połączenia wierzołka s jest następujące, krawedzie do meczów o wadze 1 i koszcie 0
+//wierzolek t posiada krawedzie wchodzace od t' o wadze (n*(n-1)/2 oraz krawedz od króla o
+//wadzę x. Tak stworzony graf to graf który posiada dolne ograniczenia oraz posiada min cost
+//na grafie można już wywołać algorytm min cost
+
+//algorytm to praktycznie kopia algorytmu max flow
+int min_cost(const std::vector<Edge>& edges, int ilosc_jednostek_przeplywu, int s, int t) {
+    int n = edges.size();
+
+    std::vector<std::vector<int>> wektor, koszt, waga;
+    std::vector<int> k;
+    std::vector<int> w;
+    std::queue<int> queue;
+
+    koszt.assign(n, std::vector<int>(n, 0));
+    waga.assign(n, std::vector<int>(n, 0));
+    wektor.assign(n, std::vector<int>());
+    int przeplyw = 0;
+    int kost = 0;
+    for (int i = 0; i < n; i++) {
+        wektor[edges[i].x].push_back(edges[i].y);
+        wektor[edges[i].y].push_back(edges[i].x);
+        koszt[edges[i].x][edges[i].y] = edges[i].koszt;
+        koszt[edges[i].y][edges[i].x] = -edges[i].koszt;
+        waga[edges[i].x][edges[i].y] = edges[i].waga;
+    }
+    while (przeplyw < ilosc_jednostek_przeplywu) {
+        std::vector<bool> vector(n, false);
+        k.assign(n, INT16_MAX);
+        k[s] = 0;
+        int front;
+        queue.push(s);
+        w.assign(n, INT16_MIN);
+        while (!queue.empty()) {
+            front = queue.front();
+            vector[front] = false;
+            queue.pop();
+            for (int i = 0; i < wektor[front].size(); i++) {
+                if (waga[front][wektor[front][i]] > 0) {
+                    if (k[wektor[front][i]] > k[front] + koszt[front][wektor[front][i]]) {
+                        k[wektor[front][i]] = k[front] + koszt[front][wektor[front][i]];
+                        w[wektor[front][i]] = front;
+                        if (vector[wektor[front][i]] != true) {
+                            vector[wektor[front][i]] = true;
+                            queue.push(wektor[front][i]);
+                        }
+                    }
+                }
+            }
+        }
+        int x = ilosc_jednostek_przeplywu - przeplyw;
+        int z = t;
+        if (k[t] == INT16_MAX)
+            break;
+
+        while (z != s) {
+            x = std::min(x, waga[w[z]][z]);
+            z = w[z];
+        }
+        przeplyw += x;
+        kost += x * k[t];
+        z = t;
+        while (z != s) {
+            waga[w[z]][z] -= x;
+            waga[z][w[z]] += x;
+            z = w[z];
+        }
+    }
+    if (przeplyw < ilosc_jednostek_przeplywu)
+        return INT16_MAX;
+    else
+        return kost;
+}
