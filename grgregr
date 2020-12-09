@@ -1,0 +1,176 @@
+#include <iostream>
+#include <vector>
+#include <cstdio>
+#include <queue>
+#include <bits/stdc++.h>
+
+
+struct Edge
+{
+    int x, y, waga, koszt;
+};
+
+int min_cost(const std::vector<Edge>& edges, int ilosc_jednostek_przeplywu, int s, int t,int koszt_max);
+int main() {
+    int liczba_zestaw;
+    std::scanf("%d",&liczba_zestaw);
+    while(liczba_zestaw>0){
+        int l=0;
+        int koszt_max;
+        std::scanf("%d",&koszt_max);
+        int liczba_graczy;
+        std::scanf("%d",&liczba_graczy);
+        int min_c;
+        int co_wielksze=int(liczba_graczy/2);
+        int mecze = ((liczba_graczy * (liczba_graczy - 1)) / 2);
+        std::vector<Edge> edges;
+        int wygrana[liczba_graczy];
+        int gracze[liczba_graczy];
+        int licznik=0;
+        for(int i=0; i<liczba_graczy;i++)
+        {
+            wygrana[i]=0;
+        }
+        int min_ce=INT32_MAX;
+        for (int i = 0; i < mecze; i++)
+        {
+            int x, y, w, c;
+            std::scanf("%d %d %d %d", &x, &y, &w, &c);
+            wygrana[w]=wygrana[w]+1;
+            if(x==0)
+            {
+                gracze[y]=c;
+            }
+            if(y==0)
+            {
+                gracze[x]=c;
+
+            }
+            if(w==x)
+            {
+                edges.push_back({x, y, 1, c});
+            }
+            else {
+                edges.push_back({y, x, 1, c});
+            }
+        }
+        std::sort( gracze, gracze+liczba_graczy);
+        int k=wygrana[0];
+        for(int i=wygrana[0];i<liczba_graczy;i++)
+        {
+            if(licznik+gracze[i]<=koszt_max)
+            {
+                licznik=licznik+gracze[i];
+                k+=1;
+            }
+        }
+        for(int i = 0; i < liczba_graczy; i++)
+        {
+            edges.push_back({liczba_graczy, i, wygrana[i], 0});
+        }
+        if(wygrana[0]>co_wielksze)
+        {
+            co_wielksze=wygrana[0];
+        }
+        int szybciej=liczba_graczy;
+        if(wygrana[0]+k<liczba_graczy){
+            szybciej=wygrana[0]+k;
+        }
+        for(int j=co_wielksze;j<=szybciej and l==0;j++) {
+            std::vector<Edge> edgestest = edges;
+            for (int i = 1; i < liczba_graczy; i++) {
+                edgestest.push_back({i, liczba_graczy + 1, j, 0});
+            }
+            edgestest.push_back({0, liczba_graczy + 2, j, 0});
+            edgestest.push_back({liczba_graczy + 1, liczba_graczy + 2, mecze-j, 0});
+            min_c=min_cost(edgestest,mecze,liczba_graczy,liczba_graczy+2,koszt_max);
+            if(min_c<=koszt_max and min_c!=-1)
+            {
+                l=1;
+                printf("TAK\n");
+
+            }
+            edgestest.clear();
+        }
+        if(min_ce > koszt_max and l==0) {
+            printf("NIE\n");
+        }
+        edges.clear();
+        liczba_zestaw=liczba_zestaw-1;
+    }
+    return 0;
+}
+
+int min_cost(const std::vector<Edge>& edges, int ilosc_jednostek_przeplywu, int s, int t,int koszt_max) {
+    int n = t+2;
+    std::vector<std::vector<int>>waga;
+    std::vector<std::vector<int>> wektor;
+
+    std::vector<std::vector<int>>koszt;
+    std::queue<int> queue;
+    koszt.assign(n, std::vector<int>(n, 0));
+    waga.assign(n, std::vector<int>(n, 0));
+    wektor.assign(n, std::vector<int>());
+    int przeplyw = 0;
+    int kost = 0;
+    for (int i = 0; i < edges.size(); i++) {
+        wektor[edges[i].x].push_back(edges[i].y);
+        wektor[edges[i].y].push_back(edges[i].x);
+        koszt[edges[i].x][edges[i].y] = edges[i].koszt;
+        koszt[edges[i].y][edges[i].x] = -edges[i].koszt;
+        waga[edges[i].x][edges[i].y] = edges[i].waga;
+    }
+    std::vector<int> k;
+    std::vector<int> w;
+    while (przeplyw < ilosc_jednostek_przeplywu) {
+        std::vector<bool> vector(n, false);
+        k.assign(n, INT32_MAX);
+        k[s] = 0;
+        int x = ilosc_jednostek_przeplywu - przeplyw;
+        int z = t;
+        int front;
+        queue.push(s);
+        w.assign(n, INT32_MAX);
+        while (!queue.empty()) {
+            front = queue.front();
+            vector[front] = false;
+            queue.pop();
+            for (int i = 0; i < wektor[front].size(); i++) {
+                if (waga[front][wektor[front][i]] > 0) {
+                    if (k[wektor[front][i]] > k[front] + koszt[front][wektor[front][i]]) {
+                        k[wektor[front][i]] = k[front] + koszt[front][wektor[front][i]];
+                        w[wektor[front][i]] = front;
+                        if (vector[wektor[front][i]] != true) {
+                            vector[wektor[front][i]] = true;
+                            queue.push(wektor[front][i]);
+                        }
+                    }
+                }
+            }
+        }
+        if (k[t] == INT32_MAX)
+            break;
+        while (z != s) {
+            x = std::min(x, waga[w[z]][z]);
+            z = w[z];
+        }
+        kost += x * k[t];
+        if(kost>koszt_max)
+        {
+            return -1;
+        }
+        przeplyw += x;
+        z = t;
+        while (z != s) {
+            waga[w[z]][z] -= x;
+            waga[z][w[z]] += x;
+            z = w[z];
+        }
+    }
+    k.clear();
+    w.clear();
+    if (przeplyw < ilosc_jednostek_przeplywu)
+        return -1;
+    else
+        return kost;
+}
